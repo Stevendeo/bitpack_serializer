@@ -1,6 +1,6 @@
 (**************************************************************************)
 (*                                                                        *)
-(*  Copyright (c) 2019-2022 Origin Labs                                   *)
+(*  Copyright (c) 2019-2022 Ocaml Pro                                     *)
 (*                                                                        *)
 (*  All rights reserved.                                                  *)
 (*  This file is distributed under the terms of the GNU Lesser General    *)
@@ -666,15 +666,16 @@ let print_custom whole fmt m =
     m
 
 let print_stats fmt t =
-  let whole = float_of_int @@ (t.stats.bits_string + t.stats.bits_int + t.stats.bits_z) / 8 in
-  let bytes_str = t.stats.bits_string / 8 in
-  let bytes_int = t.stats.bits_int / 8 in
-  let bytes_z = t.stats.bits_z / 8 in
+  let whole = float_of_int @@ (t.stats.bits_string + t.stats.bits_int + t.stats.bits_z)
+  in
+  let bytes_str = t.stats.bits_string in
+  let bytes_int = t.stats.bits_int in
+  let bytes_z = t.stats.bits_z in
   Format.fprintf fmt
     "***************Statistics***************\n\
-     Strings: %f%s (%i/%.0f)\n\
-     Integers: %f%s (%i/%.0f)\n\
-     Zarith: %f%s (%i/%.0f)\n\
+     Strings: %.2f%s (%i/%.0f)\n\
+     Integers: %.2f%s (%i/%.0f)\n\
+     Zarith: %.2f%s (%i/%.0f)\n\
      Custom print:\n%a"
     ((float_of_int bytes_str) /. whole *. 100.) "%" bytes_str whole
     ((float_of_int bytes_int) /. whole *. 100.) "%" bytes_int whole
