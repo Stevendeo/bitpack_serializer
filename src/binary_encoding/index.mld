@@ -1,0 +1,9 @@
+{1 Library binary_encoding}
+
+This is the description
+of the binary_encoding OCaml project
+
+
+
+The entry point of this library is the module: {!Binary_encoding}.
+
