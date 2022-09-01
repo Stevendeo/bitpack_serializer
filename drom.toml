@@ -29,7 +29,7 @@ of the binary_encoding OCaml project
 """
 
 [project]
-skip = []
+skip = ["src/binary_encoding/main.ml"]
 
 # project-wide library dependencies (not for package-specific deps)
 [dependencies]

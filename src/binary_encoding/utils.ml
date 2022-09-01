@@ -41,3 +41,5 @@ end
 
 let failwith m = Format.kasprintf failwith m
 
+let numbits (i : int) : int =
+  i |> Z.of_int |> Z.numbits

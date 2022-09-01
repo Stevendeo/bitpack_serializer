@@ -5,7 +5,7 @@ version:0.6.1
 
 # hash of toml configuration files
 # used for generation of all files
-738128a03eca45f6227f7fc1bf431f4c:.
+57882e6e5c8e1279483b27cc64f78acf:.
 # end context for .
 
 # begin context for .github/workflows/workflow.yml
@@ -157,11 +157,6 @@ dcaeac532024247e45a0d15af4af7519:src/binary_encoding/dune
 # file src/binary_encoding/index.mld
 a2f46df1086d9f7c1c23de677a535b04:src/binary_encoding/index.mld
 # end context for src/binary_encoding/index.mld
-
-# begin context for src/binary_encoding/main.ml
-# file src/binary_encoding/main.ml
-f984d3e6d98d85a1a8b3b5d5aae7455a:src/binary_encoding/main.ml
-# end context for src/binary_encoding/main.ml
 
 # begin context for src/binary_encoding/package.toml
 # file src/binary_encoding/package.toml
