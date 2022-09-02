@@ -5,7 +5,7 @@ version:0.6.1
 
 # hash of toml configuration files
 # used for generation of all files
-57882e6e5c8e1279483b27cc64f78acf:.
+98619ef89b1d28cd5ba056451dc8ab53:.
 # end context for .
 
 # begin context for .github/workflows/workflow.yml
@@ -35,7 +35,7 @@ a8d1bcd6f62c6b813b77d3ff8959d8d2:.ocamlformat-ignore
 
 # begin context for CHANGES.md
 # file CHANGES.md
-b57aaaf8d8f58cffed538aca30b9f89b:CHANGES.md
+8040f4470dc3efac404b618af3536e8b:CHANGES.md
 # end context for CHANGES.md
 
 # begin context for LICENSE.md
@@ -50,7 +50,7 @@ a4465ceb91fd2018e272f7d112cb950a:Makefile
 
 # begin context for README.md
 # file README.md
-43de13062915d01c3202078c04ec89fc:README.md
+5ee4b9c1c9a16f6846425bd3c9046d67:README.md
 # end context for README.md
 
 # begin context for docs/README.txt
@@ -70,7 +70,7 @@ e739f3026aa997af4026bc428f4c9ef6:docs/favicon.png
 
 # begin context for docs/index.html
 # file docs/index.html
-d848e82ab4c5dd34e4d6497b547d4569:docs/index.html
+a478a255197a7803a326bdf3faed553c:docs/index.html
 # end context for docs/index.html
 
 # begin context for docs/sphinx/index.html
@@ -85,7 +85,7 @@ c8281f46ba9a11d0b61bc8ef67eaa357:docs/style.css
 
 # begin context for drom.toml
 # file drom.toml
-629f2b2fc66c3ea36dd3bb7ee8224994:drom.toml
+5a918a5e972e8a99e18843851d228656:drom.toml
 # end context for drom.toml
 
 # begin context for dune
@@ -95,12 +95,12 @@ c8281f46ba9a11d0b61bc8ef67eaa357:docs/style.css
 
 # begin context for dune-project
 # file dune-project
-60d111432bb96600b2a3c3764d89ef45:dune-project
+de8db5a7a88f16f297aacefc98e2bbb8:dune-project
 # end context for dune-project
 
 # begin context for opam/binary_encoding.opam
 # file opam/binary_encoding.opam
-ddd3b3068ba62b6e313e6b2d8ccce391:opam/binary_encoding.opam
+1d8c00e6b02f7f86ff788b7ecde460cb:opam/binary_encoding.opam
 # end context for opam/binary_encoding.opam
 
 # begin context for scripts/after.sh
@@ -125,7 +125,7 @@ bb3a9d286f0dc64021db4194427263ee:scripts/copy-bin.sh
 
 # begin context for sphinx/about.rst
 # file sphinx/about.rst
-fecc2acdcaf777b5e2d42bf471dec6ee:sphinx/about.rst
+9e43d4a4fce015d8337331a7cf154e7b:sphinx/about.rst
 # end context for sphinx/about.rst
 
 # begin context for sphinx/conf.py
@@ -150,12 +150,12 @@ fecc2acdcaf777b5e2d42bf471dec6ee:sphinx/about.rst
 
 # begin context for src/binary_encoding/dune
 # file src/binary_encoding/dune
-dcaeac532024247e45a0d15af4af7519:src/binary_encoding/dune
+a705b2d13e7c3d393a11b0f47955a86d:src/binary_encoding/dune
 # end context for src/binary_encoding/dune
 
 # begin context for src/binary_encoding/index.mld
 # file src/binary_encoding/index.mld
-a2f46df1086d9f7c1c23de677a535b04:src/binary_encoding/index.mld
+fc43a2160af2bf28394a018661502d6b:src/binary_encoding/index.mld
 # end context for src/binary_encoding/index.mld
 
 # begin context for src/binary_encoding/package.toml

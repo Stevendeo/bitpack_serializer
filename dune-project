@@ -10,8 +10,8 @@
 
 (package
  (name binary_encoding)
- (synopsis "The binary_encoding project")
- (description "This is the description\nof the binary_encoding OCaml project\n")
+ (synopsis "The library binary_encoding provides functions for encoding efficiently simple OCaml data.")
+ (description "The library_binary encoding provides two main modules.\n- Buffer: defines buffers for writing and reading compressed data.\n- Lens: an easy to use API for easily defining encoders and decoders.\n")
  (depends
    (ocaml (>= 4.07.0))
    (zarith ( >= 1.10 ))

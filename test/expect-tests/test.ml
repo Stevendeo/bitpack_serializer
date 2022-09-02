@@ -1,4 +1,4 @@
-open Binary_encoding
+open BinaryEncoding
 open Buffer
 
 let write_read with_dict w r elt =

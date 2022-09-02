@@ -4,10 +4,12 @@ opam-version: "2.0"
 name: "binary_encoding"
 version: "0.1.0"
 license: "LGPL-2.1-only with OCaml-LGPL-linking-exception"
-synopsis: "The binary_encoding project"
+synopsis:
+  "The library binary_encoding provides functions for encoding efficiently simple OCaml data."
 description: """\
-This is the description
-of the binary_encoding OCaml project
+The library_binary encoding provides two main modules.
+- Buffer: defines buffers for writing and reading compressed data.
+- Lens: an easy to use API for easily defining encoders and decoders.
 """
 authors: ["Steven de Oliveira <de.oliveira.steven@gmail.com>"]
 maintainer: ["Steven de Oliveira <de.oliveira.steven@gmail.com>"]
