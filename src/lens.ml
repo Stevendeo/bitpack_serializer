@@ -39,14 +39,14 @@ let create (type a) (mode : a input) : a t =
     | UInt size -> fun w v -> Buffer.write w v size
     | SInt -> fun w v -> Buffer.write_z w (Z.of_int v)
     | ZInt -> fun w v -> Buffer.write_z w v
-    | String -> fun w v -> Buffer.write_string w v
+    | String -> fun w v -> Buffer.write_str_repr w v
   in
 
   let (reader : Buffer.reader -> a) = match mode with
     | UInt size -> fun r -> Buffer.read r size
     | SInt -> fun r -> Buffer.read_z r |> Z.to_int
     | ZInt -> fun r -> Buffer.read_z r
-    | String -> fun r -> Buffer.read_string r
+    | String -> fun r -> Buffer.read_str_repr r
   in
   Lens {writer; reader}
 

@@ -18,8 +18,6 @@ type stats = {
   mutable bits_string : int;
   mutable bits_int : int;
   mutable bits_z : int;
-
-  mutable custom : int StringMap.t;
 }
 
 (** The type of binary buffers. 'offset' represents the current bit position. *)
@@ -48,18 +46,14 @@ type writer = {
   mutable stats : stats
 }
 
+let default_with_dict = true
+
 (** Statistic utilities *)
 let stats_add_i_bits_string t i = t.stats.bits_string <- t.stats.bits_string + i
 let stats_add_i_bits_int t i = t.stats.bits_int <- t.stats.bits_int + i
 let stats_del_i_bits_int t i = t.stats.bits_int <- t.stats.bits_int - i
 let stats_add_i_bits_z t i = t.stats.bits_z <- t.stats.bits_z + i
-
-(** Adds a statistic with a custom keyword to the stats *)
-let stats_add_i_custom t key i =
-  t.stats.custom <-
-    StringMap.update key
-      (function None -> Some i | Some j -> Some (i + j))
-      t.stats.custom
+let stats_del_i_bits_z t i = t.stats.bits_z <- t.stats.bits_z - i
 
 (** Prints an int64 in binary, with at least 8 bits. *)
 let print_int_bin fmt i =
@@ -329,9 +323,15 @@ let write_byte (t : t) (v : int64) (size : int) =
   end;
   Log.debug "[write_byte] Ending write. Current offset = %i@." t.offset
 
+let check_size size : unit =
+  if size > 64 || size < 0
+  then
+    invalid_argument "Invalid size %i" size
+
 (** Reads 'size' bits *)
 let read (t : reader) (size : int) : int64 =
   Log.debug "[read] Reading %i bits@." size;
+  check_size size;
   let buffer = t.reader.buffer in
   let left = t.reader.offset in
   let res = read_range buffer left size in
@@ -341,17 +341,19 @@ let read (t : reader) (size : int) : int64 =
 
 (** Writes 'size' bits. *)
 let write (t : writer) (v : int64) (size : int) =
-  assert (size <= 64 && size > 0);
+  Log.debug "[write] Writing %a on %i bits@." print_int_bin v size;
   let () =
+    check_size size;
+
+    if v >= (Int64.(shift_left one size))
+    then invalid_argument
+        "Value %Ld does not fit on %i bits" v size;
+
     if v < Int64.zero
-    then failwith
-        "The write function expects a positive integer: %Ld is negative" v
-    else if v >= (Int64.(shift_left one size))
-    then failwith
-        "Value %Ld does not fit on %i bits" v size
+    then invalid_argument
+        "Value %Ld is negative" v
   in
   stats_add_i_bits_int t size;
-  Log.debug "[write] Writing %a@." print_int_bin v;
   write_byte
     t.writer
     v
@@ -410,43 +412,45 @@ let read_z state =
   let res = if sign then Z.neg n else n
   in Log.debug "[read_z] Zarith value decoded : %a@." Z.pp_print res; res
 
-(** Writes a Zarith integer. *)
+(** Writes a Zarith integer.
+    Its representation is [|b_0b_1...|
+    with:
+    - [b_n] where [mod n 8 = 0]: is the current byte the last?
+    - [b_1]: encodes the sign.
+ *)
 let write_z t v =
   Log.debug "[write_z] Writing Zarith %a at position %i@."
     Z.pp_print v
     t.writer.offset;
   let sign = Z.sign v in
   let bits = Z.numbits v in
-  if sign = 0 then
-    write_uint8 t 0x00
-  else
-    let v = Z.abs v in
-    (*Log.debug "[write_z] Writing absolute value %a (%a)@." Z.pp_print v
-      print_int_bin (Z.to_int64 v); *)
-    let get_chunk pos len = Z.to_int64 (Z.extract v pos len) in
-    let length = z_length v in
-    Log.debug "[write_z] Length = %i. Encoding sign@." length;
-    Log.debug "[write_z] Need more than 1 byte ? %b@." (bits > 6);
-    write_bool t (bits > 6); (* Does there need more than 1 byte ? *)
-    Log.debug "[write_z] Writing sign %s@."
-      (if sign < 0 then "negative" else "positive");
-    write_bool t (sign < 0); (* Is it negative ? *)
-    let six_first = get_chunk 0 6 in
-    (* Log.debug "[write_z] Encoding the 6 first bits of %a : %Ld (%a)@."
-       print_int_bin (Z.to_int64 v) six_first print_int_bin six_first; *)
-    write t six_first 6;
-    for i = 1 to length - 1 do
-      let pos = 6 + (i - 1) * 7 in
-      Log.debug "[write_z] Encoding value : Position %i@." i;
-      let there_is_more = (i <> length - 1) in
-      Log.debug "[write_z] Will there be more ? %b@." there_is_more;
-      write_bool t there_is_more;
-      let next_7_bits = get_chunk pos 7 in
-      Log.debug "[write_z] Next 7 bits : %a (%Ld)" print_int_bin next_7_bits next_7_bits;
-      write t (get_chunk pos 7) 7
-    done;
-    stats_add_i_bits_z t (length * 8);
-    stats_del_i_bits_int t (length * 8)
+  let v = Z.abs v in
+  (*Log.debug "[write_z] Writing absolute value %a (%a)@." Z.pp_print v
+    print_int_bin (Z.to_int64 v); *)
+  let get_chunk pos len = Z.to_int64 (Z.extract v pos len) in
+  let length = z_length v in
+  Log.debug "[write_z] Length = %i. Encoding sign@." length;
+  Log.debug "[write_z] Need more than 1 byte ? %b@." (bits > 6);
+  write_bool t (bits > 6); (* Does there need more than 1 byte ? *)
+  Log.debug "[write_z] Writing sign %s@."
+    (if sign < 0 then "negative" else "positive");
+  write_bool t (sign < 0); (* Is it negative ? *)
+  let six_first = get_chunk 0 6 in
+  (* Log.debug "[write_z] Encoding the 6 first bits of %a : %Ld (%a)@."
+     print_int_bin (Z.to_int64 v) six_first print_int_bin six_first; *)
+  write t six_first 6;
+  for i = 1 to length - 1 do
+    let pos = 6 + (i - 1) * 7 in
+    Log.debug "[write_z] Encoding value : Position %i@." i;
+    let there_is_more = (i <> length - 1) in
+    Log.debug "[write_z] Will there be more ? %b@." there_is_more;
+    write_bool t there_is_more;
+    let next_7_bits = get_chunk pos 7 in
+    Log.debug "[write_z] Next 7 bits : %a (%Ld)" print_int_bin next_7_bits next_7_bits;
+    write t (get_chunk pos 7) 7
+  done;
+  stats_add_i_bits_z t (length * 8);
+  stats_del_i_bits_int t (length * 8)
 
 (* We use a compression format for strings when they are identifiers of
    length < 32. The length is stored on 5 bits, each char on 6 bits. *)
@@ -477,17 +481,30 @@ let read_signed_int t =
   let zi = read_z t in
   Z.to_int zi
 
+let write_bytes_known_length ~len t b =
+  let exception NotLongEnough in
+  try
+    for i = 0 to len - 1 do
+      let from =
+        try Bytes.get_uint8 b i
+        with Invalid_argument _ -> raise NotLongEnough
+      in
+      write_uint8 t from; (* May raise Invalid_argument *)
+      stats_add_i_bits_string t 8
+    done;
+  with
+  | NotLongEnough ->
+      failwith
+        "The buffer to write has size %i, \
+         but it is set to fit in %i bytes."
+        (Bytes.length b) len
+
 (** Write bytes of any length *)
 let write_bytes t b =
-  let length = Bytes.length b in
-  write_z t (Z.of_int length);
-  for i = 0 to length - 1
-  do
-    let from = Bytes.get_uint8 b i in
-    write_uint8 t from
-  done;
-  stats_add_i_bits_string t (length * 8);
-  stats_del_i_bits_int t (length * 8)
+  let len = Bytes.length b in
+  write_z t (Z.of_int len);
+  write_bytes_known_length ~len t b;
+  stats_del_i_bits_z t (len * 8)
 
 (** Writes a string of any length *)
 let write_string t s =
@@ -515,15 +532,18 @@ let write_string t s =
     write_bytes t (Bytes.of_string s)
   end
 
-(** Reads bytes. Its length has been encoded by write_bytes *)
-let read_bytes t =
-  let length = read_z t |> Z.to_int in
-  let buff = Bytes.create length in
-  for i = 0 to length - 1
+let read_bytes_known_length ~len t =
+  let buff = Bytes.create len in
+  for i = 0 to len - 1
   do
     let from = read_uint8 t in
     Bytes.set_int8 buff i from
   done; buff
+
+(** Reads bytes. Its length has been encoded by write_bytes *)
+let read_bytes t =
+  let len = read_z t |> Z.to_int in
+  read_bytes_known_length ~len t
 
 let read_int t nbits = read t nbits |> Int64.to_int
 
@@ -551,8 +571,8 @@ let read_string t =
     Bytes.to_string buff
   else Bytes.to_string (read_bytes t)
 
-(** Encodes a string as an integer and keeps track of the correspondance
-    between integers and strings. *)
+(** Encodes a string as an integer and keeps track of the
+    correspondance between integers and strings. *)
 let write_str_repr (t : writer) s =
   match t.dictionary with
   | NoDictionary -> write_string t s
@@ -577,17 +597,17 @@ let read_str_repr (t : reader) =
       | Some s -> s
 
 (** Initializes a writing buffer with an empty buffer, dictionary and stats *)
-let initialize_writer ?(with_dict=true) () =
+let initialize_writer ?(with_dict=default_with_dict) ?(init_size = 4096) () =
   { writer =
       {
-        buffer = clean_buffer 4096;
+        buffer = clean_buffer init_size;
         offset = 0;
       };
     dictionary =
       if with_dict
       then Dictionary (ref StringMap.empty)
       else NoDictionary;
-    stats = {bits_string = 0; bits_int = 0; bits_z = 0; custom = StringMap.empty}
+    stats = {bits_string = 0; bits_int = 0; bits_z = 0}
   }
 
 (** Encodes and writes the dictionary in a fresh Bytes buffer *)
@@ -616,7 +636,7 @@ let finalize t =
   Bytes.concat Bytes.empty [bdict; bres]
 
 (** Initializes a reading buffer by decoding the dictionary at the beginning of the buffer. *)
-let initialize_reader ?(with_dict=true) buffer =
+let initialize_reader ?(with_dict=default_with_dict) buffer =
   Log.feedback "[initialize_reader] Initialization@.";
   let t = {
     reader = {
@@ -653,18 +673,6 @@ let initialize_reader ?(with_dict=true) buffer =
   Log.debug "[initialize_reader] Reader initialized@.";
   t
 
-(** Prints statistics *)
-let print_custom whole fmt m =
-  Collections.StringMap.iter
-    (fun str i ->
-       let ibyts = (float_of_int i) /. 8. in
-       Format.fprintf fmt
-         "%s: %f%s (%.0f/%.0f)\n"
-         str
-         ((ibyts/.whole)  *. 100.) "%" ibyts whole
-    )
-    m
-
 let print_stats fmt t =
   let whole = float_of_int @@ (t.stats.bits_string + t.stats.bits_int + t.stats.bits_z)
   in
@@ -675,9 +683,7 @@ let print_stats fmt t =
     "***************Statistics***************\n\
      Strings: %.2f%s (%i/%.0f)\n\
      Integers: %.2f%s (%i/%.0f)\n\
-     Zarith: %.2f%s (%i/%.0f)\n\
-     Custom print:\n%a"
+     Zarith: %.2f%s (%i/%.0f)\n"
     ((float_of_int bytes_str) /. whole *. 100.) "%" bytes_str whole
     ((float_of_int bytes_int) /. whole *. 100.) "%" bytes_int whole
     ((float_of_int bytes_z) /. whole *. 100.) "%" bytes_z whole
-    (print_custom whole) t.stats.custom

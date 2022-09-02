@@ -23,5 +23,6 @@ module Log : sig
 end
 
 val failwith : ('a, Format.formatter, unit, 'b) format4 -> 'a
+val invalid_argument : ('a, Format.formatter, unit, 'b) format4 -> 'a
 
 val numbits : int -> int

@@ -40,6 +40,8 @@ module Log = struct
 end
 
 let failwith m = Format.kasprintf failwith m
+let invalid_argument m = Format.kasprintf (fun s -> raise (Invalid_argument s)) m
+
 
 let numbits (i : int) : int =
   i |> Z.of_int |> Z.numbits
