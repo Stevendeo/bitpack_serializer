@@ -1,6 +1,6 @@
 (**************************************************************************)
 (*                                                                        *)
-(*  Copyright (c) 2019-2022 OcamlPro                                     *)
+(*  Copyright (c) 2019-2022 OcamlPro                                      *)
 (*                                                                        *)
 (*  All rights reserved.                                                  *)
 (*  This file is distributed under the terms of the GNU Lesser General    *)
@@ -15,7 +15,8 @@
 
 (** {1 Lenses} *)
 
-(** The type of lenses. *)
+(** The type of lenses. An ['a lens] will provide symetical functions to
+    read and write values of type ['a]. *)
 type 'a t
 
 (** Writes in a buffer. *)
@@ -35,14 +36,20 @@ val sint : int t
 (** A lens for Zarith integers *)
 val zint : Z.t t
 
-(** A lens for strings *)
+(** A lens for strings. *)
 val string : string t
+
+(** A lens for unknown sized bytes. *)
+val bytes : bytes t
+
+(** A lens for fixed sized bytes. *)
+val fixed_size_bytes : num_bytes:int -> bytes t
 
 (** Given two lenses for two types, creates a lens for a pair of these types. *)
 val conj : 'a t -> 'b t -> ('a * 'b) t
 
 (** For creating a lens for disjunctions, we define the ['a case] type
-    for the {disj} function to build new lenses. *)
+    for the {!Lens.disj} function to build new lenses. *)
 type 'a case
 
 (** Builds a case for disjunctive lenses. *)
@@ -52,7 +59,8 @@ val case :
   'b t ->
   'a case
 
-(** Creates a lens from an array of cases. *)
+(** Creates a lens from an array of cases.
+    Raises [Failure] when reading or writing if no case matches the encoding. *)
 val disj : 'a case array -> 'a t
 
 (** Builds a self dependent lens. *)

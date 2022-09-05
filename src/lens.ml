@@ -10,6 +10,8 @@
 (*                                                                        *)
 (**************************************************************************)
 
+open Utils
+
 exception MuReached
 
 type 'a t = | Mu
@@ -23,6 +25,8 @@ type _ input =
   | SInt : int input
   | ZInt : Z.t input
   | String : string input
+  | Bytes : bytes input
+  | FixedSizeBytes : int -> bytes input
 
 let write (lens : 'a t) (w_buffer : Buffer.writer) (elt : 'a) : unit =
   match lens with
@@ -38,15 +42,19 @@ let create (type a) (mode : a input) : a t =
   let (writer : Buffer.writer -> a -> unit) = match mode with
     | UInt size -> fun w v -> Buffer.write w v size
     | SInt -> fun w v -> Buffer.write_z w (Z.of_int v)
-    | ZInt -> fun w v -> Buffer.write_z w v
-    | String -> fun w v -> Buffer.write_str_repr w v
+    | ZInt -> Buffer.write_z
+    | String -> Buffer.write_str_repr
+    | Bytes -> Buffer.write_bytes
+    | FixedSizeBytes len -> Buffer.write_bytes_known_length ~len
   in
 
   let (reader : Buffer.reader -> a) = match mode with
     | UInt size -> fun r -> Buffer.read r size
     | SInt -> fun r -> Buffer.read_z r |> Z.to_int
-    | ZInt -> fun r -> Buffer.read_z r
-    | String -> fun r -> Buffer.read_str_repr r
+    | ZInt -> Buffer.read_z
+    | String -> Buffer.read_str_repr
+    | Bytes -> Buffer.read_bytes
+    | FixedSizeBytes len -> Buffer.read_bytes_known_length ~len
   in
   Lens {writer; reader}
 
@@ -54,6 +62,9 @@ let uint ~size = create (UInt size)
 let sint = create SInt
 let zint = create ZInt
 let string = create String
+let bytes = create Bytes
+let fixed_size_bytes ~num_bytes = create (FixedSizeBytes num_bytes)
+
 let conj l1 l2 = Lens {
   writer = (fun w (e1, e2) -> write l1 w e1; write l2 w e2);
   reader = (fun r -> let e1 = read l1 r in let e2 = read l2 r in e1, e2)
@@ -89,7 +100,14 @@ let disj (cases : 'a case array) : 'a t =
   in
   let reader r =
     let index = read uint_lens r in
-    let A {construct; lens; _} = cases.(Int64.to_int index) in
+    let A {construct; lens; _} =
+      let index = Int64.to_int index in
+      try cases.(index) with
+      | Invalid_argument _ ->
+          failwith "Failing while reading disjunction: \
+                    %i is not a valid case identifier (only %i cases)"
+            index (Array.length cases)
+    in
     read lens r |> construct
   in Lens {writer; reader}
 
