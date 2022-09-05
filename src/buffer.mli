@@ -10,19 +10,19 @@
 (*                                                                        *)
 (**************************************************************************)
 
-(** The Buffer defines the ùethods for reading and writing in a
-    compressed buffer. *)
+(** The Buffer defines the methods for reading and writing in a
+    buffer. The compression algorithm used by the library works by writing
+    bits after bits instead of bytes. *)
 
 type reader
 
 (** {1 Writer} *)
 
-
 (** A writer is a {{: https://v2.ocaml.org/api/Bytes.html }Bytes} buffer where is
     written the data. It also contains an optional dictionary for string
     storage.
-    It also holds statistics
-*)
+    It also holds statistics on the repartition of bits for each datatype
+    (unsigned int, signed int and string). *)
 type writer
 
 (** Initializes a new buffer as a writer.
@@ -115,9 +115,7 @@ val read_signed_int : reader -> int
 (** Reads an unbounded integer *)
 val read_z : reader -> Z.t
 
-(** [write_bytes_constant_size ~len w b]
-    Reads [len] bytes.
-*)
+(** Reads [len] bytes and returns it as a bytes buffer. *)
 val read_bytes_known_length : len:int -> reader -> bytes
 
 (** Reads a integer representing the number of bytes to read,

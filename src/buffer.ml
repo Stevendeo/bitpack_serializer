@@ -43,7 +43,7 @@ type reader = {
 type writer = {
   mutable writer : t;
   mutable dictionary : int StringMap.t ref dictionary;
-  mutable stats : stats
+  mutable stats : stats;
 }
 
 let default_with_dict = true
