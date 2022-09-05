@@ -1,6 +1,6 @@
 (**************************************************************************)
 (*                                                                        *)
-(*  Copyright (c) 2019-2022 Ocaml Pro                                     *)
+(*  Copyright (c) 2019-2022 OcamlPro                                      *)
 (*                                                                        *)
 (*  All rights reserved.                                                  *)
 (*  This file is distributed under the terms of the GNU Lesser General    *)
@@ -61,12 +61,12 @@ let conj l1 l2 = Lens {
 
 type 'a case =
   | A : {
-      dest : 'a -> 'b option;
-      cons : 'b -> 'a;
+      destruct : 'a -> 'b option;
+      construct : 'b -> 'a;
       lens: 'b t;
     } -> 'a case
 
-let case dest cons lens = A {dest; cons; lens}
+let case ~destruct ~construct lens = A {destruct; construct; lens}
 
 let disj (cases : 'a case array) : 'a t =
   let size =
@@ -77,20 +77,20 @@ let disj (cases : 'a case array) : 'a t =
   let writer w e =
     let exception Stop in
     try
-      Array.iteri (fun i (A {dest; lens; _}) ->
-          match dest e with
+      Array.iteri (fun i (A {destruct; lens; _}) ->
+          match destruct e with
           | None -> ()
           | Some elt ->
               write uint_lens w (Int64.of_int i); write lens w elt; raise Stop)
         cases;
-      raise Not_found
+      failwith "Failing while writing disjunction: case not found."
     with
       Stop -> ()
   in
   let reader r =
     let index = read uint_lens r in
-    let A {cons; lens; _} = cases.(Int64.to_int index) in
-    read lens r |> cons
+    let A {construct; lens; _} = cases.(Int64.to_int index) in
+    read lens r |> construct
   in Lens {writer; reader}
 
 let mu (lens : 'a t -> 'a t) : 'a t =

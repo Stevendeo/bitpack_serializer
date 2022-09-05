@@ -1,6 +1,6 @@
 (**************************************************************************)
 (*                                                                        *)
-(*  Copyright (c) 2019-2022 Ocaml Pro                                     *)
+(*  Copyright (c) 2019-2022 OcamlPro                                      *)
 (*                                                                        *)
 (*  All rights reserved.                                                  *)
 (*  This file is distributed under the terms of the GNU Lesser General    *)
@@ -35,18 +35,20 @@ type 'dict dictionary =
     have been encoded as integers. *)
 type reader = {
   mutable reader : t;
-  mutable dictionary : string IntMap.t dictionary
+  mutable dictionary : string IntMap.t dictionary;
+  mutable dictionary_max_bit_size : int option;
 }
 
 (** A writing specialized buffer. The dictionary is used to encode strings
     into integers. *)
 type writer = {
   mutable writer : t;
-  mutable dictionary : int StringMap.t ref dictionary;
+  dictionary : int StringMap.t ref dictionary;
+  dictionary_max_bit_size : int option;
   mutable stats : stats;
 }
 
-let default_with_dict = true
+let default_with_dict = Dictionary None
 
 (** Statistic utilities *)
 let stats_add_i_bits_string t i = t.stats.bits_string <- t.stats.bits_string + i
@@ -54,6 +56,10 @@ let stats_add_i_bits_int t i = t.stats.bits_int <- t.stats.bits_int + i
 let stats_del_i_bits_int t i = t.stats.bits_int <- t.stats.bits_int - i
 let stats_add_i_bits_z t i = t.stats.bits_z <- t.stats.bits_z + i
 let stats_del_i_bits_z t i = t.stats.bits_z <- t.stats.bits_z - i
+
+let dictionary_size_to_max_bit_size = function
+  | None -> None
+  | Some s -> Some (Utils.numbits s - 1)
 
 (** Prints an int64 in binary, with at least 8 bits. *)
 let print_int_bin fmt i =
@@ -160,57 +166,60 @@ let read_byte_left (buffer : Bytes.t) (i : int) : int =
 
 (** Returns 'size' bits starting from 'left'  *)
 let read_range (buffer : Bytes.t) (left : int) (size : int) : int64 =
-  if size <= 0 || size > 64
+  if size < 0 || size > 64
   then failwith "Bad size %i" size;
-  let right = left + size - 1 in
-  Log.debug "[read_range] Read range [%a, %a]@." pp_offset left pp_offset right;
-  let left_offset, _ = offsets left in
-  let right_offset, right_boffset = offsets right in
-  if left_offset = right_offset
-  then (
-    Log.debug "[read_range] Same byte, leftpos = %a, rightpos = %a@." pp_offset left pp_offset right ;
-    let left_part = read_byte_left buffer right in
-    let right_part = read_byte_right buffer left in
-    Log.debug
-      "[read_range] Left byte : %a, Right byte : %a, shift of %i@."
-      print_int_bin (Int64.of_int left_part)
-      print_int_bin (Int64.of_int right_part)
-      (7 - right_boffset);
-    Int64.of_int ((left_part land right_part) lsr (7 - right_boffset))
-  ) else (
-    Log.debug "[read_range] Not on the same byte@.";
-    let suffix_size = right_boffset + 1 in
-    let left_part = read_byte_right buffer left in
-    let right_part = read_byte_left buffer right lsr (8 - suffix_size) in
-    Log.debug "[read_range] Left byte : %a, Right byte : %a@."
-      print_int_bin (Int64.of_int left_part)
-      print_int_bin (Int64.of_int right_part);
-    (* Size of suffix is right_boffset + 1 *)
-    let () = Log.debug "[read_range] Size of suffix is %i@." suffix_size in
-    let suffix = Int64.of_int right_part in
-    let rec write (res : int64) (cursor : int) : int64 =
-      if cursor = right_offset
-      then (
-        Log.debug "[read_range] Adding suffix %a@." print_int_bin suffix;
-        let res = Int64.(add (shift_left res suffix_size) suffix) in
-        Log.debug "[read_range] After adding suffix : %a@." print_int_bin res;
-        res
-      )
-      else (
-        let buff_content = read_byte buffer cursor in
-        Log.debug "[read_range] Buffer content at curswor %i : %i (%a)@."
-          cursor buff_content print_int_bin @@ Int64.of_int buff_content;
-        write
-          (Int64.(add (shift_left res 8) @@ Int64.of_int buff_content))
-          (cursor + 1)
-      )
-    in
+  if size = 0 then Int64.zero
+  else begin
+    let right = left + size - 1 in
+    Log.debug "[read_range] Read range [%a, %a]@." pp_offset left pp_offset right;
+    let left_offset, _ = offsets left in
+    let right_offset, right_boffset = offsets right in
+    if left_offset = right_offset
+    then (
+      Log.debug "[read_range] Same byte, leftpos = %a, rightpos = %a@." pp_offset left pp_offset right ;
+      let left_part = read_byte_left buffer right in
+      let right_part = read_byte_right buffer left in
+      Log.debug
+        "[read_range] Left byte : %a, Right byte : %a, shift of %i@."
+        print_int_bin (Int64.of_int left_part)
+        print_int_bin (Int64.of_int right_part)
+        (7 - right_boffset);
+      Int64.of_int ((left_part land right_part) lsr (7 - right_boffset))
+    ) else (
+      Log.debug "[read_range] Not on the same byte@.";
+      let suffix_size = right_boffset + 1 in
+      let left_part = read_byte_right buffer left in
+      let right_part = read_byte_left buffer right lsr (8 - suffix_size) in
+      Log.debug "[read_range] Left byte : %a, Right byte : %a@."
+        print_int_bin (Int64.of_int left_part)
+        print_int_bin (Int64.of_int right_part);
+      (* Size of suffix is right_boffset + 1 *)
+      let () = Log.debug "[read_range] Size of suffix is %i@." suffix_size in
+      let suffix = Int64.of_int right_part in
+      let rec write (res : int64) (cursor : int) : int64 =
+        if cursor = right_offset
+        then (
+          Log.debug "[read_range] Adding suffix %a@." print_int_bin suffix;
+          let res = Int64.(add (shift_left res suffix_size) suffix) in
+          Log.debug "[read_range] After adding suffix : %a@." print_int_bin res;
+          res
+        )
+        else (
+          let buff_content = read_byte buffer cursor in
+          Log.debug "[read_range] Buffer content at curswor %i : %i (%a)@."
+            cursor buff_content print_int_bin @@ Int64.of_int buff_content;
+          write
+            (Int64.(add (shift_left res 8) @@ Int64.of_int buff_content))
+            (cursor + 1)
+        )
+      in
 
-    Log.debug "[read_range] Prefix = %i (%a)@." left_part print_int_bin (Int64.of_int left_part);
-    write
-      (Int64.of_int left_part)
-      (left_offset + 1)
-  )
+      Log.debug "[read_range] Prefix = %i (%a)@." left_part print_int_bin (Int64.of_int left_part);
+      write
+        (Int64.of_int left_part)
+        (left_offset + 1)
+    )
+  end
 
 (** Splits 'v' into two integers 'left', 'right' such that the concatenation
     of the binary representation of 'left' and 'right' is 'v'.
@@ -571,6 +580,11 @@ let read_string t =
     Bytes.to_string buff
   else Bytes.to_string (read_bytes t)
 
+let write_string_id (t : writer) (str_id : int) =
+  match t.dictionary_max_bit_size with
+  | None -> write_signed_int t str_id
+  | Some bit_size -> write t (Int64.of_int str_id) bit_size
+
 (** Encodes a string as an integer and keeps track of the
     correspondance between integers and strings. *)
 let write_str_repr (t : writer) s =
@@ -581,15 +595,20 @@ let write_str_repr (t : writer) s =
       | None ->
           let new_id = StringMap.cardinal !dict in
           dict := StringMap.add s new_id !dict;
-          write_signed_int t new_id
-      | Some i -> write_signed_int t i
+          write_string_id t new_id
+      | Some i -> write_string_id t i
+
+let read_string_id (t : reader) =
+  match t.dictionary_max_bit_size with
+  | None -> read_signed_int t
+  | Some bit_size -> Int64.to_int (read t bit_size)
 
 (** Decodes a string encoded as an integer with the reader dictionary. *)
 let read_str_repr (t : reader) =
   match t.dictionary with
   | NoDictionary -> read_string t
   | Dictionary d ->
-      let id = read_signed_int t in
+      let id = read_string_id t in
       match IntMap.find_opt id d with
         None ->
           failwith
@@ -598,15 +617,20 @@ let read_str_repr (t : reader) =
 
 (** Initializes a writing buffer with an empty buffer, dictionary and stats *)
 let initialize_writer ?(with_dict=default_with_dict) ?(init_size = 4096) () =
+  let dictionary, dictionary_max_bit_size =
+    match with_dict with
+    | NoDictionary -> NoDictionary, None
+    | Dictionary size ->
+        Dictionary (ref StringMap.empty),
+        dictionary_size_to_max_bit_size size
+  in
   { writer =
       {
         buffer = clean_buffer init_size;
         offset = 0;
       };
-    dictionary =
-      if with_dict
-      then Dictionary (ref StringMap.empty)
-      else NoDictionary;
+    dictionary;
+    dictionary_max_bit_size;
     stats = {bits_string = 0; bits_int = 0; bits_z = 0}
   }
 
@@ -643,35 +667,47 @@ let initialize_reader ?(with_dict=default_with_dict) buffer =
       buffer;
       offset = 0;
     };
-    dictionary = NoDictionary; (* updates later *)
+    dictionary = NoDictionary; (* updated later *)
+    dictionary_max_bit_size = None; (* updated later *)
   }
   in
-  if with_dict
-  then begin
-    let dictionary =
-      let cardinal = read_signed_int t in
-      Log.debug "[initialize_reader] Dictionary size = %i@." cardinal;
-      let rec build_dic dict id =
-        if id = cardinal
-        then (
-          let () =
-            let byte_offset = t.reader.offset mod 8 in
-            if byte_offset = 0 then () else (
-              t.reader.offset <- (t.reader.offset + 8 - byte_offset);
+  let () =
+    match with_dict with
+    | NoDictionary -> ()
+    | Dictionary size -> begin
+        let dictionary =
+          let cardinal = read_signed_int t in
+          Log.debug "[initialize_reader] Dictionary size = %i@." cardinal;
+          let rec build_dic dict id =
+            if id = cardinal
+            then (
+              let () =
+                let byte_offset = t.reader.offset mod 8 in
+                if byte_offset = 0 then () else (
+                  t.reader.offset <- (t.reader.offset + 8 - byte_offset);
+                )
+              in dict
             )
-          in dict
-        )
-        else
-          let s = read_string t in
-          Log.debug "[initialize_reader] Decoded %i <-> %s@." id s;
-          build_dic (IntMap.add id s dict) (id + 1)
-      in
-      build_dic IntMap.empty 0
-    in
-    t.dictionary <- Dictionary dictionary;
-  end;
+            else
+              let s = read_string t in
+              Log.debug "[initialize_reader] Decoded %i <-> %s@." id s;
+              build_dic (IntMap.add id s dict) (id + 1)
+          in
+          build_dic IntMap.empty 0
+        in
+        t.dictionary <- Dictionary dictionary;
+        t.dictionary_max_bit_size <- dictionary_size_to_max_bit_size size;
+      end
+  in
   Log.debug "[initialize_reader] Reader initialized@.";
   t
+
+let print_dict fmt = function
+  | NoDictionary -> Format.fprintf fmt "(none)"
+  | Dictionary {contents = d} ->
+      StringMap.iter
+        (fun key elt -> Format.fprintf fmt "%i: %s@." elt key)
+        d
 
 let print_stats fmt t =
   let whole = float_of_int @@ (t.stats.bits_string + t.stats.bits_int + t.stats.bits_z)
@@ -683,7 +719,9 @@ let print_stats fmt t =
     "***************Statistics***************\n\
      Strings: %.2f%s (%i/%.0f)\n\
      Integers: %.2f%s (%i/%.0f)\n\
-     Zarith: %.2f%s (%i/%.0f)\n"
+     Zarith: %.2f%s (%i/%.0f)\n\
+     Dictionary:%a"
     ((float_of_int bytes_str) /. whole *. 100.) "%" bytes_str whole
     ((float_of_int bytes_int) /. whole *. 100.) "%" bytes_int whole
     ((float_of_int bytes_z) /. whole *. 100.) "%" bytes_z whole
+    print_dict t.dictionary

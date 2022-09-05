@@ -1,10 +1,9 @@
 
 (library
-  (name binaryEncoding)
+  (name binary_encoding)
   (public_name binary_encoding)
   (wrapped true)
-  (libraries zarith )
-  (modules_without_implementation binaryEncoding)
+  (libraries zarith)
 )
 
 

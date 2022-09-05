@@ -14,7 +14,12 @@
     buffer. The compression algorithm used by the library works by writing
     bits after bits instead of bytes. *)
 
-type reader
+(** A dictionary type.
+    It is used as an argument for initialzing writers and readers.
+*)
+type 'dict dictionary =
+  | NoDictionary
+  | Dictionary of 'dict
 
 (** {1 Writer} *)
 
@@ -26,13 +31,23 @@ type reader
 type writer
 
 (** Initializes a new buffer as a writer.
-    If [with_dict] is set to true (by default [true]), strings will be
+    If [with_dict] is set to [NoDictionary], strings will be written in the
+    buffer.
+    If [with_dict] is set to [Dictionary None] (by default), strings will be
+    replaced by an unknown size integers; a disctionary will be saved and
+    concatenated at the beginning of the buffer after finalization.
+    If [with_dict] is set to [Dictionary (Some size)], it does the same than
+    [Dictionary None] but it is assumed there will be no more than [size] words
+    to save.
     registered in a dictionary (useful when the same string apprears at
     different places) and replaced by integers in the buffer.
     Variable [init_size] is the initial size of the writing bytes buffer
     (by default: 4096)
 *)
-val initialize_writer : ?with_dict:bool -> ?init_size:int -> unit -> writer
+val initialize_writer :
+  ?with_dict:int option dictionary ->
+  ?init_size:int ->
+  unit -> writer
 
 (** Returns the bytes representation of the buffer. If there is a dictionary,
     it is written at the beginning of the buffer.
@@ -44,7 +59,7 @@ val finalize : writer -> Bytes.t
     Writes [v] on [buff] using [size] bits. Value must be positive.
     Fails with [Invalid_argument] if [size] is not in [[0, 63]] or if
     [v] is negative or greater than [2^size].
- *)
+*)
 val write : writer -> int64 -> int -> unit
 
 (** Writes a boolean on 1 bit: [0] if [false], [1] if [true]. *)
@@ -72,7 +87,7 @@ val write_signed_int : writer -> int -> unit
 
 (** [write_bytes_known_size ~len w b]
     Writes the first [len] bytes of [b] in argument.
- *)
+*)
 val write_bytes_known_length : len:int -> writer -> Bytes.t -> unit
 
 (** Writes a bytes buffer of any size. *)
@@ -84,10 +99,16 @@ val write_str_repr : writer -> string -> unit
 
 (** {1 Reader} *)
 
+(** A reader buffer. *)
+type reader
+
 (** Initializes a buffer as a reader.
-    If the writer used a dictionary, set [with_dict] to [true] ([true] by default).
+    The [with_dict] argument must be the same as the argument used for
+    initializing the writer.
 *)
-val initialize_reader : ?with_dict:bool -> Bytes.t -> reader
+val initialize_reader :
+  ?with_dict:int option dictionary ->
+  Bytes.t -> reader
 
 (** read buff n reads n bits on the buffer as an unsigned value *)
 val read : reader -> int -> int64
