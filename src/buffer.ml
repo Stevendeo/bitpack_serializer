@@ -15,7 +15,7 @@ open Collections
 
 (** Keeps track of statistics on the buffer content *)
 type stats = {
-  mutable bits_string : int;
+  mutable bits_bytes : int;
   mutable bits_int : int;
   mutable bits_z : int;
 }
@@ -51,11 +51,12 @@ type writer = {
 let default_with_dict = Dictionary None
 
 (** Statistic utilities *)
-let stats_add_i_bits_string t i = t.stats.bits_string <- t.stats.bits_string + i
-let stats_add_i_bits_int t i = t.stats.bits_int <- t.stats.bits_int + i
-let stats_del_i_bits_int t i = t.stats.bits_int <- t.stats.bits_int - i
-let stats_add_i_bits_z t i = t.stats.bits_z <- t.stats.bits_z + i
-let stats_del_i_bits_z t i = t.stats.bits_z <- t.stats.bits_z - i
+let stats_bytes t i = t.stats.bits_bytes <- t.stats.bits_bytes + i
+let stats_int t i = t.stats.bits_int <- t.stats.bits_int + i
+let stats_z t i = t.stats.bits_z <- t.stats.bits_z + i
+
+(* let stats_del_i_bits_int t i = t.stats.bits_int <- t.stats.bits_int - i
+ * let stats_del_i_bits_z t i = t.stats.bits_z <- t.stats.bits_z - i *)
 
 let dictionary_size_to_max_bit_size = function
   | None -> None
@@ -348,8 +349,9 @@ let read (t : reader) (size : int) : int64 =
   Log.debug "[read] New offset = %i@." t.reader.offset;
   res
 
+
 (** Writes 'size' bits. *)
-let write (t : writer) (v : int64) (size : int) =
+let write_with_stats stats_add (t : writer) (v : int64) (size : int) =
   Log.debug "[write] Writing %a on %i bits@." print_int_bin v size;
   let () =
     check_size size;
@@ -362,11 +364,13 @@ let write (t : writer) (v : int64) (size : int) =
     then invalid_argument
         "Value %Ld is negative" v
   in
-  stats_add_i_bits_int t size;
   write_byte
     t.writer
     v
-    size
+    size;
+  stats_add t size
+
+let write = write_with_stats stats_int
 
 (** Basic reading and writing utilities. *)
 let read_bool   t : bool  = (read t 1) = Int64.one
@@ -375,12 +379,15 @@ let read_uint16 t : int   = read t 16 |> Int64.to_int
 let read_uint32 t : int   = read t 32 |> Int64.to_int
 let read_uint63 t : int64 = read t 63
 
-let write_bool t (b : bool)     = write t Int64.(if b then one else zero) 1
-let write_int t (v : int) nbits = write t (Int64.of_int v) nbits
+let write_stat_int = write_with_stats stats_int
+
+let write_bool t (b : bool) = write_stat_int t Int64.(if b then one else zero) 1
+
+let write_int t (v : int) nbits = write_stat_int t (Int64.of_int v) nbits
 let write_uint8 t (v : int)     = write_int t v 8
 let write_uint16 t (v : int)    = write_int t v 16
 let write_uint32 t (v : int)    = write_int t v 32
-let write_uint63 t (v : int64)  = write t v 63
+let write_uint63 t (v : int64)  = write_stat_int t v 63
 
 let z_length value = (Z.numbits value + 1 + 6) / 7
 
@@ -447,7 +454,7 @@ let write_z t v =
   let six_first = get_chunk 0 6 in
   (* Log.debug "[write_z] Encoding the 6 first bits of %a : %Ld (%a)@."
      print_int_bin (Z.to_int64 v) six_first print_int_bin six_first; *)
-  write t six_first 6;
+  write_with_stats stats_z t six_first 6;
   for i = 1 to length - 1 do
     let pos = 6 + (i - 1) * 7 in
     Log.debug "[write_z] Encoding value : Position %i@." i;
@@ -456,10 +463,8 @@ let write_z t v =
     write_bool t there_is_more;
     let next_7_bits = get_chunk pos 7 in
     Log.debug "[write_z] Next 7 bits : %a (%Ld)" print_int_bin next_7_bits next_7_bits;
-    write t (get_chunk pos 7) 7
-  done;
-  stats_add_i_bits_z t (length * 8);
-  stats_del_i_bits_int t (length * 8)
+    write_with_stats stats_z t (get_chunk pos 7) 7
+  done
 
 (* We use a compression format for strings when they are identifiers of
    length < 32. The length is stored on 5 bits, each char on 6 bits. *)
@@ -498,8 +503,7 @@ let write_bytes_known_length ~len t b =
         try Bytes.get_uint8 b i
         with Invalid_argument _ -> raise NotLongEnough
       in
-      write_uint8 t from; (* May raise Invalid_argument *)
-      stats_add_i_bits_string t 8
+      write_with_stats stats_bytes t (Int64.of_int from) 8; (* May raise Invalid_argument *)
     done;
   with
   | NotLongEnough ->
@@ -512,8 +516,7 @@ let write_bytes_known_length ~len t b =
 let write_bytes t b =
   let len = Bytes.length b in
   write_z t (Z.of_int len);
-  write_bytes_known_length ~len t b;
-  stats_del_i_bits_z t (len * 8)
+  write_bytes_known_length ~len t b
 
 (** Writes a string of any length *)
 let write_string t s =
@@ -531,11 +534,8 @@ let write_string t s =
         | 'A'..'Z' -> 37 + (code - code_A)
         | _ -> assert false
       in
-      write_int t v 6
+      write_with_stats stats_bytes t (Int64.of_int v) 6
     done;
-    let stats = 4 + 6*len in
-    stats_add_i_bits_string t stats;
-    stats_del_i_bits_int t stats
   end else begin
     write_bool t false;
     write_bytes t (Bytes.of_string s)
@@ -583,7 +583,7 @@ let read_string t =
 let write_string_id (t : writer) (str_id : int) =
   match t.dictionary_max_bit_size with
   | None -> write_signed_int t str_id
-  | Some bit_size -> write t (Int64.of_int str_id) bit_size
+  | Some bit_size -> write_int t str_id bit_size
 
 (** Encodes a string as an integer and keeps track of the
     correspondance between integers and strings. *)
@@ -631,7 +631,7 @@ let initialize_writer ?(with_dict=default_with_dict) ?(init_size = 4096) () =
       };
     dictionary;
     dictionary_max_bit_size;
-    stats = {bits_string = 0; bits_int = 0; bits_z = 0}
+    stats = {bits_bytes = 0; bits_int = 0; bits_z = 0}
   }
 
 (** Encodes and writes the dictionary in a fresh Bytes buffer *)
@@ -703,25 +703,25 @@ let initialize_reader ?(with_dict=default_with_dict) buffer =
   t
 
 let print_dict fmt = function
-  | NoDictionary -> Format.fprintf fmt "(none)"
+  | NoDictionary -> Format.fprintf fmt "(none)@."
   | Dictionary {contents = d} ->
       StringMap.iter
         (fun key elt -> Format.fprintf fmt "%i: %s@." elt key)
         d
 
 let print_stats fmt t =
-  let whole = float_of_int @@ (t.stats.bits_string + t.stats.bits_int + t.stats.bits_z)
+  let bits_str = t.stats.bits_bytes in
+  let bits_int = t.stats.bits_int in
+  let bits_z = t.stats.bits_z in
+  let whole = float_of_int @@ (bits_str + bits_int + bits_z)
   in
-  let bytes_str = t.stats.bits_string in
-  let bytes_int = t.stats.bits_int in
-  let bytes_z = t.stats.bits_z in
   Format.fprintf fmt
     "***************Statistics***************\n\
      Strings: %.2f%s (%i/%.0f)\n\
      Integers: %.2f%s (%i/%.0f)\n\
      Zarith: %.2f%s (%i/%.0f)\n\
-     Dictionary:%a"
-    ((float_of_int bytes_str) /. whole *. 100.) "%" bytes_str whole
-    ((float_of_int bytes_int) /. whole *. 100.) "%" bytes_int whole
-    ((float_of_int bytes_z) /. whole *. 100.) "%" bytes_z whole
+     Dictionary:%a@."
+    ((float_of_int bits_str) /. whole *. 100.) "%" bits_str whole
+    ((float_of_int bits_int) /. whole *. 100.) "%" bits_int whole
+    ((float_of_int bits_z) /. whole *. 100.) "%" bits_z whole
     print_dict t.dictionary

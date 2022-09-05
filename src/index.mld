@@ -1,10 +1,8 @@
 {1 Library binary_encoding}
 
 The library_binary encoding provides two main modules.
-- Buffer: defines buffers for writing and reading compressed data.
-- Lens: an easy to use API for easily defining encoders and decoders.
+- {{!Binary_encoding.Buffer} Buffer}: defines buffers for writing and reading compressed data.
+- {{!Binary_encoding.Lens} Lens}: an easy to use API for easily defining encoders and decoders.
 
-
-
-The entry point of this library is the module: {!BinaryEncoding}.
+The entry point of this library is the module: {!Binary_encoding}.
 

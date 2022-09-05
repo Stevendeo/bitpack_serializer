@@ -5,16 +5,17 @@ let write_read with_dict w r elt =
   let writer = initialize_writer ~with_dict () in
   let () = w writer elt in
   let buff = finalize writer in
-  print_stats Format.std_formatter writer;
+  (* print_stats Format.std_formatter writer; *)
   let reader = initialize_reader ~with_dict buff in
   r reader, Bytes.length buff
 
 let%expect_test "int_encoding" =
+  let to_encode = 3L in
   let w writer elt = write writer elt 2 in
   let r reader = read reader 2 in
-  let res, size = write_read NoDictionary w r 3L in
-  Format.printf "%Ld, %i" res size;
-  [%expect {| 3, 1 |}]
+  let res, _size = write_read NoDictionary w r to_encode in
+  Format.printf "%b" (res = to_encode);
+  [%expect {| true |}]
 
 
 type operation =
@@ -53,15 +54,16 @@ let%expect_test "lens" =
     Add(
       Add (Var "toto", Const 4),
       Mul (
-        Sub (Var "toto", Var "toto"), (Var "toto")
+        Sub (Var "toto", Var "toto"),
+        Const 0
       )
     ) in
-  let res, size =
+  let res, _size =
     write_read (Dictionary (Some 3))
       (Lens.write operation_lens)
       (Lens.read operation_lens)
       v
   in
-  Format.printf "%b, %i" (res = v) size;
-  [%expect {| true, 15 |}]
+  Format.printf "%b" (res = v);
+  [%expect {| true |}]
 
