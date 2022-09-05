@@ -25,7 +25,7 @@ type operation =
   | Mul of operation * operation
   | Sub of operation * operation
 
-let%expect_test "lens" =
+let%expect_test "operation_lens" =
   let open Lens in
   let operation_lens = mu @@ fun self ->
     disj  [|

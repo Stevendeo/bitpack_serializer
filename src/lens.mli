@@ -10,8 +10,8 @@
 (*                                                                        *)
 (**************************************************************************)
 
-(** Lenses are useful tools defining data-types encodings. You can define
-    reader and writers that will be equivalent. *)
+(** Lenses are useful tools defining data-types encodings. Lenses provides
+    in a single OCaml value equivalent serializes and deserializers. *)
 
 (** {1 Lenses} *)
 

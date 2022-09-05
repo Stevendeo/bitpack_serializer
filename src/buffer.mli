@@ -10,7 +10,7 @@
 (*                                                                        *)
 (**************************************************************************)
 
-(** The Buffer defines the methods for reading and writing in a
+(** The Buffer defines the methods for serializers & deserializers in a
     buffer. The compression algorithm used by the library works by writing
     bits after bits instead of bytes. *)
 
