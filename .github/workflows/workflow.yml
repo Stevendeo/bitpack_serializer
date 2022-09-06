@@ -59,7 +59,7 @@ jobs:
 
       - run: opam pin add . -y --no-action
 
-      - run: opam depext -y bitpack_serializer
+#     - run: opam depext -y bitpack_serializer
 #        if: steps.cache-opam.outputs.cache-hit != 'true'
 
       - run: opam install -y opam/*.opam --deps-only --with-test
@@ -75,9 +75,7 @@ jobs:
 
       - name: run test suite
         run: |
-          ./scripts/before.sh test
           opam exec -- dune build @runtest
-          ./scripts/after.sh test
         if: matrix.skip_test  != 'true'
 
       - name: test source is well formatted
