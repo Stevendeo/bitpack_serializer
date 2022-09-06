@@ -10,7 +10,6 @@ all: build
 
 build:
 	opam exec -- dune build @install
-	./scripts/copy-bin.sh binary_encoding
 
 build-deps:
 	if ! [ -e _opam ]; then \

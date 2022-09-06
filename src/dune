@@ -1,7 +1,7 @@
 
 (library
-  (name binary_encoding)
-  (public_name binary_encoding)
+  (name bitpack_serializer)
+  (public_name bitpack_serializer)
   (wrapped true)
   (libraries zarith)
 )
@@ -13,6 +13,6 @@
     (action (with-stdout-to %{targets} (run %{ocaml} unix.cma %{script}))))
 
 (documentation
-  (package binary_encoding))
+  (package bitpack_serializer))
 
 

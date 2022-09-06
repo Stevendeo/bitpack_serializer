@@ -6,5 +6,5 @@
   (pps ppx_expect))
  (inline_tests
   (modes best)) ; add js for testing with nodejs
- (libraries binary_encoding) ; add your project libraries here
+ (libraries bitpack_serializer) ; add your project libraries here
  )
