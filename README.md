@@ -13,3 +13,4 @@ $ opam install .
 ```
 
 ## Documentation
+Documentation is available [here](https://ocamlpro.github.io/bitpack_serializer/)
