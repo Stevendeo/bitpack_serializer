@@ -4,9 +4,11 @@ on:
   pull_request:
     branches:
       - master
+      - ci
   push:
     branches:
       - master
+      - ci
 
 jobs:
   build:
@@ -24,7 +26,7 @@ jobs:
 
         include:
           - os: ubuntu-latest
-            ocaml-compiler: 4.07.0
+            ocaml-compiler: 4.08.0
             skip_test: true
 
 
@@ -48,7 +50,7 @@ jobs:
         with:
           ocaml-compiler: ${{ matrix.ocaml-compiler }}
           opam-pin: false
-          opam-depext: false
+          opam-depext: true
 
       - name: Set git user
         run: |
@@ -59,7 +61,9 @@ jobs:
 
       - run: opam pin add . -y --no-action
 
-#     - run: opam depext -y bitpack_serializer
+      - run: opam --version
+
+      - run: opam depext -y bitpack_serializer
 #        if: steps.cache-opam.outputs.cache-hit != 'true'
 
       - run: opam install -y opam/*.opam --deps-only --with-test
@@ -67,9 +71,6 @@ jobs:
 
 #      - run: opam upgrade --fixup
 #        if: steps.cache-opam.outputs.cache-hit == 'true'
-
-      - run: dos2unix scripts/*.sh
-        if: matrix.os == 'windows-latest'
 
       - run: make build
 
