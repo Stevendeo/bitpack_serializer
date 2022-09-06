@@ -89,9 +89,9 @@ jobs:
              sudo apt install -yqq python3-sphinx python3-sphinx-rtd-theme
              opam install -y dune odoc
              make doc
-             touch _drom/docs/.nojekyll
-             touch _drom/docs/sphinx/.nojekyll
-             touch _drom/docs/doc/.nojekyll
+             touch _build/docs/.nojekyll
+             touch _build/docs/sphinx/.nojekyll
+             touch _build/docs/doc/.nojekyll
 
       - name: deploy-doc
         uses: JamesIves/github-pages-deploy-action@3.6.2
@@ -99,5 +99,5 @@ jobs:
         with:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           BRANCH: gh-pages
-          FOLDER: _drom/docs/
+          FOLDER: _build/docs/
           CLEAN: true
