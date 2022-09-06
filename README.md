@@ -1,15 +1,15 @@
+# Bitpack Serializer
 
-
-
-
-# binary_encoding
-
-The library_binary encoding provides two main modules.
+The library provides two main modules.
 - Buffer: defines buffers for writing and reading compressed data.
 - Lens: an easy to use API for easily defining encoders and decoders.
 
+## Install
+Bitpack serializer is compatible with ocaml.4.08.0 and higher. You can install
+it on a compatible switch via opam:
 
-* Website: Not yet specified
-* General Documentation: Not yet specified
-* API Documentation: Not yet specified
-* Sources: Not yet specified
+```sh
+$ opam install .
+```
+
+## Documentation

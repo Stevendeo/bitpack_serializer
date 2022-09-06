@@ -85,14 +85,12 @@ jobs:
         if: matrix.ocaml-compiler == '4.10.0' && matrix.os == 'ubuntu-latest'
 
       - name: build-doc
-        if: github.ref == 'refs/heads/master' && matrix.ocaml-compiler == '4.10.0' && matrix.os == 'ubuntu-latest'
+        if: matrix.ocaml-compiler == '4.10.0' && matrix.os == 'ubuntu-latest'
         run: |
              sudo apt install -yqq python3-sphinx python3-sphinx-rtd-theme
              opam install -y dune odoc
              make doc
              touch _build/docs/.nojekyll
-             touch _build/docs/sphinx/.nojekyll
-             touch _build/docs/doc/.nojekyll
 
       - name: deploy-doc
         uses: JamesIves/github-pages-deploy-action@3.6.2
