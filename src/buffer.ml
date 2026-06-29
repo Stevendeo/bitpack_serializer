@@ -62,7 +62,7 @@ let stats_z t i = t.stats.bits_z <- t.stats.bits_z + i
 
 let dictionary_size_to_max_bit_size = function
   | None -> None
-  | Some s -> Some (Utils.numbits s - 1)
+  | Some s -> Some (Utils.numbits (s - 1))
 
 (** Prints an int64 in binary, with at least 8 bits. *)
 let print_int_bin fmt i =
@@ -357,7 +357,12 @@ let write_with_stats stats_add (t : writer) (v : int64) (size : int) =
   Log.debug "[write] Writing %a on %i bits@." print_int_bin v size;
   let () =
     check_size size;
-    if size < 64 && v >= (Int64.(shift_left one size))
+    let max_possible_value =
+      if size = 64
+      then Int64.max_int
+      else Int64.(sub (shift_left one size) one)
+    in
+    if v > max_possible_value
     then invalid_argument
         "Value %Ld does not fit on %i bits" v size;
   in

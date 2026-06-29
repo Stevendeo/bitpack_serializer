@@ -21,6 +21,7 @@ type 'a t = | Mu
               }
 
 type _ input =
+  | Bool : bool input
   | FixedSizeInt64 : int -> int64 input
   | Int64 : int64 input
   | Int : int input
@@ -28,6 +29,9 @@ type _ input =
   | String : string input
   | Bytes : bytes input
   | FixedSizeBytes : int -> bytes input
+
+let make ~writer ~reader =
+  Lens {writer; reader}
 
 let write (lens : 'a t) (w_buffer : Buffer.writer) (elt : 'a) : unit =
   match lens with
@@ -41,6 +45,7 @@ let read lens r_buffer =
 
 let create (type a) (mode : a input) : a t =
   let (writer : Buffer.writer -> a -> unit) = match mode with
+    | Bool -> fun w b -> Buffer.write_bool w b
     | FixedSizeInt64 size -> fun w v -> Buffer.write w v size
     | Int64 -> fun w v -> Buffer.write_z w (Z.of_int64 v)
     | Int -> fun w v -> Buffer.write_z w (Z.of_int v)
@@ -51,6 +56,7 @@ let create (type a) (mode : a input) : a t =
   in
 
   let (reader : Buffer.reader -> a) = match mode with
+    | Bool -> fun r -> Buffer.read_bool r
     | FixedSizeInt64 size -> fun r -> Buffer.read r size
     | Int64 -> fun r -> Buffer.read_z r |> Z.to_int64
     | Int -> fun r -> Buffer.read_z r |> Z.to_int
@@ -61,6 +67,7 @@ let create (type a) (mode : a input) : a t =
   in
   Lens {writer; reader}
 
+let bool = create Bool
 let fixed_size_int ~size = create (FixedSizeInt64 size)
 let int64 = create Int64
 let int = create Int

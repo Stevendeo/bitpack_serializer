@@ -25,7 +25,16 @@ val write : 'a t -> Buffer.writer -> 'a -> unit
 (** Reads from a buffer. *)
 val read : 'a t -> Buffer.reader -> 'a
 
+(** Builds a custom lens.*)
+val make :
+  writer:(Buffer.writer -> 'a -> unit)
+  -> reader:(Buffer.reader -> 'a)
+  -> 'a t
+
 (** Basic lenses *)
+
+(** A lens for booleans. *)
+val bool : bool t
 
 (** A lens for unsigned int64 of fixed size. *)
 val fixed_size_int : size:int -> int64 t

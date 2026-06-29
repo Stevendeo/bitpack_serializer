@@ -51,6 +51,7 @@ let%expect_test "max_int64_encoding" =
 let modules_to_test = [
   (module Test_operation : Sig.S);
   (module Test_records : Sig.S);
+  (module Test_lists : Sig.S);
 ]
 
 let%expect_test _ =
